@@ -136,7 +136,7 @@ def to_nand(formula: Formula) -> Formula:
     if is_constant(root):
         p = Formula('p')
         not_p = Formula('-&', p, p)
-        t = Formula('-&', not_p, not_p)
+        t = Formula('-&', p, not_p)
         if root == 'T':
             return t
         return Formula('-&', t, t)
