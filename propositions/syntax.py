@@ -59,9 +59,9 @@ def is_binary(string: str) -> bool:
     Returns:
         ``True`` if the given string is a binary operator, ``False`` otherwise.
     """
-    return string == '&' or string == '|' or string == '->'
+    #return string == '&' or string == '|' or string == '->'
     # For Chapter 3:
-    # return string in {'&', '|',  '->', '+', '<->', '-&', '-|'}
+    return string in {'&', '|',  '->', '+', '<->', '-&', '-|'}
 
 @frozen
 class Formula:
@@ -200,7 +200,7 @@ class Formula:
         if is_constant(string[0]):
             return Formula(string[0]), string[1:]
 
-        if string[0] >= 'p' and string[0] <= 'z':
+        if 'p' <= string[0] <= 'z':
             index = 1
             while index < len(string) and string[index].isdecimal():
                 index += 1
@@ -218,25 +218,30 @@ class Formula:
             first, remainder = Formula._parse_prefix(string[1:])
             if first is None:
                 return None, remainder
+
             if remainder == '':
                 return None, 'Expected binary operator'
 
             operator = None
-            max_op_length = min(3, len(remainder))
-            for length in range(max_op_length, 0, -1):
-                candidate = remainder[:length]
-                if is_binary(candidate):
-                    operator = candidate
-                    remainder = remainder[length:]
-                    break
+
+            for length in (3, 2, 1):
+                if len(remainder) >= length:
+                    candidate = remainder[:length]
+                    if is_binary(candidate):
+                        operator = candidate
+                        remainder = remainder[length:]
+                        break
+
             if operator is None:
                 return None, 'Expected binary operator'
 
             second, remainder = Formula._parse_prefix(remainder)
             if second is None:
                 return None, remainder
+
             if remainder == '' or remainder[0] != ')':
                 return None, 'Expected closing parenthesis'
+
             return Formula(operator, first, second), remainder[1:]
 
         return None, 'Invalid formula'
@@ -361,6 +366,23 @@ class Formula:
             assert is_variable(variable)
         # Task 3.3
 
+        if is_variable(self.root):
+            if self.root in substitution_map:
+                return substitution_map[self.root]
+            return Formula(self.root)
+
+        if is_constant(self.root):
+            return Formula(self.root)
+
+        if is_unary(self.root):
+            new_first = self.first.substitute_variables(substitution_map)
+            return Formula(self.root, new_first)
+
+        new_first = self.first.substitute_variables(substitution_map)
+        new_second = self.second.substitute_variables(substitution_map)
+        return Formula(self.root, new_first, new_second)
+
+
     def substitute_operators(self, substitution_map: Mapping[str, Formula]) -> \
             Formula:
         """Substitutes in the current formula, each constant or operator `op`
@@ -390,3 +412,32 @@ class Formula:
                    is_binary(operator)
             assert substitution_map[operator].variables().issubset({'p', 'q'})
         # Task 3.4
+
+        if is_variable(self.root):
+            return Formula(self.root)
+
+        if is_constant(self.root):
+            if self.root in substitution_map:
+                return substitution_map[self.root]
+            return Formula(self.root)
+
+        if is_unary(self.root):
+            new_first = self.first.substitute_operators(substitution_map)
+
+            if self.root not in substitution_map:
+                return Formula(self.root, new_first)
+
+            template = substitution_map[self.root]
+            return template.substitute_variables({'p': new_first})
+
+        new_first = self.first.substitute_operators(substitution_map)
+        new_second = self.second.substitute_operators(substitution_map)
+
+        if self.root not in substitution_map:
+            return Formula(self.root, new_first, new_second)
+
+        template = substitution_map[self.root]
+        return template.substitute_variables({
+            'p': new_first,
+            'q': new_second
+        })
