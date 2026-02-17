@@ -135,11 +135,11 @@ def to_nand(formula: Formula) -> Formula:
 
     if is_constant(root):
         p = Formula('p')
+        not_p = Formula('-&', p, p)
+        t = Formula('-&', not_p, not_p)
         if root == 'T':
-            return Formula('-&',
-                           Formula('-&', p, p),
-                           Formula('-&', p, p))
-        return Formula('-&', p, Formula('-&', p, p))
+            return t
+        return Formula('-&', t, t)
 
     if is_unary(root):
         inner = to_nand(formula.first)
@@ -158,14 +158,16 @@ def to_nand(formula: Formula) -> Formula:
         return Formula('-&', left_not, right_not)
 
     if root == '->':
-        not_left = Formula('-&', left, left)
-        return Formula('-&', not_left, right)
+        right_not = Formula('-&', right, right)
+        return Formula('-&', left, right_not)
 
     if root == '+':
-        a_or_b = to_nand(Formula('|', formula.first, formula.second))
-        a_and_b = to_nand(Formula('&', formula.first, formula.second))
+        left_not = Formula('-&', left, left)
+        right_not = Formula('-&', right, right)
+        a_or_b = Formula('-&', left_not, right_not)
+        a_and_b = Formula('-&', Formula('-&', left, right), Formula('-&', left, right))
         not_and = Formula('-&', a_and_b, a_and_b)
-        return to_nand(Formula('&', a_or_b, not_and))
+        return Formula('-&', Formula('-&', a_or_b, not_and), Formula('-&', a_or_b, not_and))
 
     if root == '<->':
         xor = to_nand(Formula('+', formula.first, formula.second))
@@ -175,8 +177,10 @@ def to_nand(formula: Formula) -> Formula:
         return Formula('-&', left, right)
 
     if root == '-|':
-        or_formula = to_nand(Formula('|', formula.first, formula.second))
-        return Formula('-&', or_formula, or_formula)
+        left_not = Formula('-&', left, left)
+        right_not = Formula('-&', right, right)
+        a_or_b = Formula('-&', left_not, right_not)
+        return Formula('-&', a_or_b, a_or_b)
 
     return formula
 
